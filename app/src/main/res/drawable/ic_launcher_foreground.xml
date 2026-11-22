@@ -7,10 +7,7 @@
     <path
         android:fillColor="#6200EE"
         android:pathData="M0,0h108v108h-108z"/>
-    <text
+    <path
         android:fillColor="#FFFFFF"
-        android:textSize="36sp"
-        android:textStyle="bold"
-        android:x="30"
-        android:y="68">AF</text>
+        android:pathData="M34,36h6v36h-6v-15h-10v15h-6v-36h6v15h10v-15z M56,36h18v6h-12v9h10v6h-10v9h12v6h-18v-36z"/>
 </vector>
