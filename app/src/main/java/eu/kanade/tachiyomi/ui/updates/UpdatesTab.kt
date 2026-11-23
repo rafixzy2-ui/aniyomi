@@ -53,7 +53,6 @@ data object UpdatesTab : Tab {
             titleRes = MR.strings.label_recent_updates,
             tabs = persistentListOf(
                 animeUpdatesTab(context, fromMore),
-                mangaUpdatesTab(context, fromMore),
             ),
         )
 
