@@ -16,20 +16,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import eu.kanade.core.preference.PreferenceMutableState
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.ui.unit.dp
-import cafe.adriel.voyager.core.model.rememberScreenModel
-import cafe.adriel.voyager.navigator.LocalNavigator
-import cafe.adriel.voyager.navigator.currentOrThrow
-import eu.kanade.tachiyomi.ui.browse.anime.source.AnimeSourcesScreenModel
-import eu.kanade.tachiyomi.ui.browse.anime.source.browse.BrowseAnimeSourceScreen
 import eu.kanade.presentation.library.components.LibraryTabs
 import eu.kanade.tachiyomi.ui.library.anime.AnimeLibraryItem
 import kotlinx.coroutines.delay
@@ -93,58 +79,6 @@ fun AnimeLibraryContent(
                 onAnimeClicked(anime.anime.id)
             } else {
                 onToggleSelection(anime)
-            }
-        }
-
-        val sourceScreenModel = rememberScreenModel { AnimeSourcesScreenModel() }
-        val sourceState by sourceScreenModel.state.collectAsState()
-        val navigator = LocalNavigator.currentOrThrow
-
-        if (sourceState.items.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                sourceState.items.forEach { uiModel ->
-                    if (uiModel is eu.kanade.presentation.browse.anime.AnimeSourceUiModel.Item) {
-                        val source = uiModel.source
-                        AssistChip(
-                            onClick = {
-                                navigator.push(BrowseAnimeSourceScreen(source.id, null))
-                            },
-                            label = { Text(text = source.name) },
-                        )
-                    }
-                }
-            }
-        }
-
-        val sourceScreenModel = rememberScreenModel { AnimeSourcesScreenModel() }
-        val sourceState by sourceScreenModel.state.collectAsState()
-        val navigator = LocalNavigator.currentOrThrow
-
-        if (sourceState.items.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                sourceState.items.forEach { uiModel ->
-                    if (uiModel is eu.kanade.presentation.browse.anime.AnimeSourceUiModel.Item) {
-                        val source = uiModel.source
-                        AssistChip(
-                            onClick = {
-                                navigator.push(BrowseAnimeSourceScreen(source.id, null))
-                            },
-                            label = { Text(text = source.name) },
-                        )
-                    }
-                }
             }
         }
 
