@@ -87,6 +87,7 @@ fun MoreScreen(
             }
 
             item {
+                val downloadQueueState = downloadQueueStateProvider()
                 TextPreferenceWidget(
                     title = stringResource(MR.strings.label_download_queue),
                     subtitle = when (downloadQueueState) {
@@ -117,6 +118,13 @@ fun MoreScreen(
                     },
                     icon = Icons.Outlined.GetApp,
                     onPreferenceClick = onClickDownloadQueue,
+                )
+            }
+            item {
+                TextPreferenceWidget(
+                    title = stringResource(AYMR.strings.general_categories),
+                    icon = Icons.AutoMirrored.Outlined.Label,
+                    onPreferenceClick = onClickCategories,
                 )
             }
             item {
