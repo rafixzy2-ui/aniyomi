@@ -122,6 +122,32 @@ fun AnimeLibraryContent(
             }
         }
 
+        val sourceScreenModel = rememberScreenModel { AnimeSourcesScreenModel() }
+        val sourceState by sourceScreenModel.state.collectAsState()
+        val navigator = LocalNavigator.currentOrThrow
+
+        if (sourceState.items.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                sourceState.items.forEach { uiModel ->
+                    if (uiModel is eu.kanade.presentation.browse.anime.AnimeSourceUiModel.Item) {
+                        val source = uiModel.source
+                        AssistChip(
+                            onClick = {
+                                navigator.push(BrowseAnimeSourceScreen(source.id, null))
+                            },
+                            label = { Text(text = source.name) },
+                        )
+                    }
+                }
+            }
+        }
+
         PullRefresh(
             refreshing = isRefreshing,
             onRefresh = {
