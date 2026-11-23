@@ -17,7 +17,7 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "com.rehan.anifusion"
+        applicationId = "com.rehan.orbisym"
 
         versionCode = 132
         versionName = "0.18.2.1"
