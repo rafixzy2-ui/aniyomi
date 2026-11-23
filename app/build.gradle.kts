@@ -51,6 +51,7 @@ android {
         val release by getting {
             isMinifyEnabled = Config.enableCodeShrink
             isShrinkResources = Config.enableCodeShrink
+            signingConfig = signingConfigs.getByName("debug")
 
             proguardFiles("proguard-android-optimize.txt", "proguard-rules.pro")
 
