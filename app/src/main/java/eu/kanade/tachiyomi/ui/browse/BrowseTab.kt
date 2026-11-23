@@ -76,11 +76,8 @@ data object BrowseTab : Tab {
 
         val tabs = persistentListOf(
             animeSourcesTab(),
-            mangaSourcesTab(),
             animeExtensionsTab(animeExtensionsScreenModel),
-            mangaExtensionsTab(mangaExtensionsScreenModel),
             migrateAnimeSourceTab(),
-            migrateMangaSourceTab(),
         )
 
         val state = rememberPagerState { tabs.size }
