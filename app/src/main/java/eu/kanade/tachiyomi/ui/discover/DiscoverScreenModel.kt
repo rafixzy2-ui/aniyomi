@@ -1,139 +1,115 @@
 package eu.kanade.tachiyomi.ui.discover
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-	import uy.kohesive.injekt.Injekt
-	import uy.kohesive.injekt.api.get
-	import tachiyomi.data.core.network.NetworkHelper
 
-sealed interface DiscoverState {
-    data object Loading : DiscoverState
-    data class Error(val message: String) : DiscoverState
-    data class Success(val items: List<DiscoverItem>) : DiscoverState
-}
+private const val ANILIST_URL = "https://graphql.anilist.co"
 
-@Serializable
-data class DiscoverItem(
-    val id: Int,
-    val title: String,
-    val coverUrl: String?,
-    val score: Int?,
-)
+private const val TRENDING_QUERY =
+    "query { Page(page: 1, perPage: 20) { media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english } coverImage { large } averageScore } } }"
 
-@Serializable
-data class AniListResponse(
-    val data: AniListData?,
-)
+private val discoverJson = Json { ignoreUnknownKeys = true }
 
-@Serializable
-data class AniListData(
-    val Page: AniListPage?,
-)
+private val discoverClient = OkHttpClient()
 
-@Serializable
-data class AniListPage(
-    val media: List<AniListMedia>?,
-)
+class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(State.Loading) {
 
-@Serializable
-data class AniListMedia(
-    val id: Int,
-    val title: AniListTitle?,
-    val coverImage: AniListCoverImage?,
-    val averageScore: Int?,
-)
+    sealed interface State {
+        data object Loading : State
 
-@Serializable
-data class AniListTitle(
-    val romaji: String?,
-    val english: String?,
-)
+        data class Error(val message: String) : State
 
-@Serializable
-data class AniListCoverImage(
-    val large: String?,
-)
+        data class Success(val items: List<Item>) : State
+    }
 
-class DiscoverScreenModel : StateScreenModel<DiscoverState>(DiscoverState.Loading) {
-
-    private val networkHelper: NetworkHelper = Injekt.get()
-    private val json: Json = Injekt.get()
+    data class Item(
+        val id: Int,
+        val title: String,
+        val coverUrl: String?,
+        val score: Int?,
+    )
 
     init {
         load()
     }
 
     fun load() {
-        screenModelScope.launch(Dispatchers.IO) {
-            mutableState.update { DiscoverState.Loading }
-            try {
-                val query = "query { Page(page:1, perPage:20) { media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english } coverImage { large } averageScore } } }"
-                val requestBody = json.encodeToString(
-                    kotlinx.serialization.json.JsonObject.serializer(),
-                    kotlinx.serialization.json.JsonObject(mapOf("query" to kotlinx.serialization.json.JsonPrimitive(query)))
-                ).toRequestBody("application/json".toMediaType())
-
-                val request = Request.Builder()
-                    .url("https://graphql.anilist.co")
-                    .post(requestBody)
-                    .build()
-
-                networkHelper.client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) {
-                        mutableState.update { DiscoverState.Error("Network error: ${response.code}") }
-                        return@launch
-                    }
-                    val bodyString = response.body?.string() ?: throw Exception("Empty response")
-                    val parsed = json.decodeFromString(AniListResponse.serializer(), bodyString)
-                    val mediaList = parsed.data?.Page?.media.orEmpty()
-                    val items = mediaList.map { media ->
-                        DiscoverItem(
-                            id = media.id,
-                            title = media.title?.english ?: media.title?.romaji ?: "Unknown",
-                            coverUrl = media.coverImage?.large,
-                            score = media.averageScore,
-                        )
-                    }
-                    mutableState.update { DiscoverState.Success(items) }
-                }
+        mutableState.value = State.Loading
+        screenModelScope.launch {
+            mutableState.value = try {
+                State.Success(fetchTrending())
             } catch (e: Exception) {
-                mutableState.update { DiscoverState.Error(e.message ?: "Unknown error") }
+                State.Error(e.message ?: "Network error")
             }
         }
     }
+
+    private suspend fun fetchTrending(): List<Item> = withContext(Dispatchers.IO) {
+        val requestBody = "{\"query\":\"$TRENDING_QUERY\"}"
+            .toRequestBody("application/json".toMediaType())
+        val request = Request.Builder()
+            .url(ANILIST_URL)
+            .header("Accept", "application/json")
+            .post(requestBody)
+            .build()
+
+        val text = discoverClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("AniList error ${response.code}")
+            response.peekBody(Long.MAX_VALUE).string()
+        }
+
+        val parsed = discoverJson.decodeFromString(AniListResponse.serializer(), text)
+        parsed.data?.page?.media.orEmpty().map { media ->
+            Item(
+                id = media.id,
+                title = media.title?.english ?: media.title?.romaji ?: "Unknown",
+                coverUrl = media.coverImage?.large,
+                score = media.averageScore,
+            )
+        }
+    }
 }
+
+@Serializable
+private data class AniListResponse(
+    val data: AniListData? = null,
+)
+
+@Serializable
+private data class AniListData(
+    @SerialName("Page") val page: AniListPage? = null,
+)
+
+@Serializable
+private data class AniListPage(
+    val media: List<AniListMedia> = emptyList(),
+)
+
+@Serializable
+private data class AniListMedia(
+    val id: Int,
+    val title: AniListTitle? = null,
+    val coverImage: AniListCover? = null,
+    val averageScore: Int? = null,
+)
+
+@Serializable
+private data class AniListTitle(
+    val romaji: String? = null,
+    val english: String? = null,
+)
+
+@Serializable
+private data class AniListCover(
+    val large: String? = null,
+)
