@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.discover
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,11 +27,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
+import eu.kanade.tachiyomi.ui.browse.anime.source.globalsearch.GlobalAnimeSearchScreen
 
 @Composable
 fun DiscoverContent(screenModel: DiscoverScreenModel) {
     val state by screenModel.state.collectAsState()
+    val navigator = LocalNavigator.currentOrThrow
 
     when (val current = state) {
         is DiscoverScreenModel.State.Loading -> {
@@ -59,6 +64,9 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clickable {
+                                navigator.push(GlobalAnimeSearchScreen(searchQuery = item.title))
+                            }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
