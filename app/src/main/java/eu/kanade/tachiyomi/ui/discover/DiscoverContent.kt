@@ -60,6 +60,50 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
         }
         is DiscoverScreenModel.State.Success -> {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
+                if (current.items.isNotEmpty()) {
+                    item(key = "hero") {
+                        val heroItem = current.items.first()
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                                .clickable {
+                                    navigator.push(GlobalAnimeSearchScreen(searchQuery = heroItem.title))
+                                }
+                        ) {
+                            if (heroItem.coverUrl != null) {
+                                AsyncImage(
+                                    model = heroItem.coverUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(16.dp)
+                            ) {
+                                Text(
+                                    text = heroItem.title,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = {
+                                    navigator.push(GlobalAnimeSearchScreen(searchQuery = heroItem.title))
+                                }) {
+                                    Text(text = "View Details")
+                                }
+                            }
+                        }
+                    }
+                }
                 items(current.items, key = { it.id }) { item ->
                     Row(
                         modifier = Modifier
