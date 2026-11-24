@@ -16,7 +16,7 @@ import eu.kanade.tachiyomi.ui.library.anime.AnimeLibraryTab
 import eu.kanade.tachiyomi.ui.library.manga.MangaLibraryTab
 import eu.kanade.tachiyomi.ui.more.MoreTab
 import eu.kanade.tachiyomi.ui.updates.UpdatesTab
-import tachiyomi.i18n.aniyomi.AYMR
+import eu.kanade.tachiyomi.ui.browse.BrowseTab
 
 enum class NavStyle(
     val titleRes: StringResource,

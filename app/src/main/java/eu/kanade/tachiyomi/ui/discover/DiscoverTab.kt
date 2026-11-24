@@ -8,8 +8,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import cafe.adriel.voyager.navigator.tab.Tab
-import cafe.adriel.voyager.navigator.tab.TabOptions
+import eu.kanade.presentation.util.Tab
+import eu.kanade.presentation.util.TabOptions
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.i18n.MR
 
