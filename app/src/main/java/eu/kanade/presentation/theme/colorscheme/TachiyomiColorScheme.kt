@@ -17,15 +17,15 @@ import androidx.compose.ui.graphics.Color
 internal object TachiyomiColorScheme : BaseColorScheme() {
 
     override val darkScheme = darkColorScheme(
-        primary = Color(0xFFB0C6FF),
-        onPrimary = Color(0xFF002D6E),
-        primaryContainer = Color(0xFF00429B),
-        onPrimaryContainer = Color(0xFFD9E2FF),
+        primary = Color(0xFFF65605),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFF5A2200),
+        onPrimaryContainer = Color(0xFFFFDBCB),
         inversePrimary = Color(0xFF0058CA),
         secondary = Color(0xFFB0C6FF), // Unread badge
         onSecondary = Color(0xFF002D6E), // Unread badge text
-        secondaryContainer = Color(0xFF00429B), // Navigation bar selector pill & pro
-        onSecondaryContainer = Color(0xFFD9E2FF), // Navigation bar selector icon
+        secondaryContainer = Color(0xFF4A2A1A), // Navigation bar selector pill & pro
+        onSecondaryContainer = Color(0xFFFFDBCB), // Navigation bar selector icon
         tertiary = Color(0xFF7ADC77), // Downloaded badge
         onTertiary = Color(0xFF003909), // Downloaded badge text
         tertiaryContainer = Color(0xFF005312),
