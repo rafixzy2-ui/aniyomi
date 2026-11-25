@@ -125,6 +125,22 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                             )
                                         }
 
+                                        // Dark gradient over the image using colorStops
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(
+                                                    Brush.verticalGradient(
+                                                        colorStops = arrayOf(
+                                                            0.0f to Color.Transparent,
+                                                            0.5f to Color.Transparent,
+                                                            0.8f to MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                                                            1.0f to MaterialTheme.colorScheme.background
+                                                        )
+                                                    )
+                                                )
+                                        )
+
                                         // Light dark scrim at top
                                         Box(
                                             modifier = Modifier
@@ -133,19 +149,6 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                                 .background(
                                                     Brush.verticalGradient(
                                                         colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent)
-                                                    )
-                                                )
-                                        )
-
-                                        // Dark gradient over bottom 55 percent
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(
-                                                    Brush.verticalGradient(
-                                                        colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background),
-                                                        startY = 480f * 0.45f,
-                                                        endY = 480f
                                                     )
                                                 )
                                         )
