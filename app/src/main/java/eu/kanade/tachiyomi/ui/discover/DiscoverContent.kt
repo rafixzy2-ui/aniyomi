@@ -75,12 +75,11 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
         }
         is DiscoverScreenModel.State.Success -> {
             val trendingItems = current.items
-            val topRatedItems = current.items.sortedByDescending { it.score ?: 0 }
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (current.items.isNotEmpty()) {
+                if (trendingItems.isNotEmpty()) {
                     item(key = "hero") {
-                        val heroItems = current.items.take(5)
+                        val heroItems = trendingItems.take(5)
                         val pagerState = rememberPagerState(pageCount = { heroItems.size })
 
                         LaunchedEffect(pagerState) {
@@ -253,10 +252,10 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                     }
                 }
 
-                item(key = "trending_section") {
+                items(current.rows, key = { row -> row.first }) { (rowTitle, rowItems) ->
                     Column(modifier = Modifier.padding(vertical = 12.dp)) {
                         Text(
-                            text = "Trending",
+                            text = rowTitle,
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                         )
@@ -265,64 +264,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                         ) {
-                            items(trendingItems, key = { "trending_${it.id}" }) { item ->
-                                Column(
-                                    modifier = Modifier
-                                        .width(120.dp)
-                                        .clickable {
-                                            navigator.push(GlobalAnimeSearchScreen(searchQuery = item.title))
-                                        }
-                                ) {
-                                    if (item.coverUrl != null) {
-                                        AsyncImage(
-                                            model = item.coverUrl,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .width(120.dp)
-                                                .height(170.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
-                                            contentScale = ContentScale.Crop,
-                                        )
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .width(120.dp)
-                                                .height(170.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = item.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 2,
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = item.score?.let { "Score: %.1f".format(it / 10.0) } ?: "Score: -",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.secondary,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item(key = "top_rated_section") {
-                    Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                        Text(
-                            text = "Top Rated",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        )
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-                        ) {
-                            items(topRatedItems, key = { "top_${it.id}" }) { item ->
+                            items(rowItems, key = { "${rowTitle}_${it.id}" }) { item ->
                                 Column(
                                     modifier = Modifier
                                         .width(120.dp)

@@ -15,8 +15,14 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 private const val ANILIST_URL = "https://graphql.anilist.co"
 
-private const val TRENDING_QUERY =
-    "query { Page(page: 1, perPage: 20) { media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english } coverImage { extraLarge large } genres seasonYear format averageScore } } }"
+private const val DISCOVER_QUERY =
+    "query {" +
+        " trending: Page(page: 1, perPage: 20) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { id title { romaji english } coverImage { extraLarge large } genres seasonYear format averageScore } }" +
+        " popular: Page(page: 1, perPage: 20) { media(type: ANIME, sort: POPULARITY_DESC, isAdult: false) { id title { romaji english } coverImage { extraLarge large } genres seasonYear format averageScore } }" +
+        " action: Page(page: 1, perPage: 20) { media(type: ANIME, sort: POPULARITY_DESC, genre_in: [\"Action\"], isAdult: false) { id title { romaji english } coverImage { extraLarge large } genres seasonYear format averageScore } }" +
+        " romance: Page(page: 1, perPage: 20) { media(type: ANIME, sort: POPULARITY_DESC, genre_in: [\"Romance\"], isAdult: false) { id title { romaji english } coverImage { extraLarge large } genres seasonYear format averageScore } }" +
+        " fantasy: Page(page: 1, perPage: 20) { media(type: ANIME, sort: POPULARITY_DESC, genre_in: [\"Fantasy\"], isAdult: false) { id title { romaji english } coverImage { extraLarge large } genres seasonYear format averageScore } }" +
+    " }"
 
 private val discoverJson = Json { ignoreUnknownKeys = true }
 
@@ -29,7 +35,10 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(State.Lo
 
         data class Error(val message: String) : State
 
-        data class Success(val items: List<Item>) : State
+        data class Success(
+            val items: List<Item>,
+            val rows: List<Pair<String, List<Item>>>,
+        ) : State
     }
 
     data class Item(
@@ -51,15 +60,15 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(State.Lo
         mutableState.value = State.Loading
         screenModelScope.launch {
             mutableState.value = try {
-                State.Success(fetchTrending())
+                fetchDiscoverData()
             } catch (e: Exception) {
                 State.Error(e.message ?: "Network error")
             }
         }
     }
 
-    private suspend fun fetchTrending(): List<Item> = withContext(Dispatchers.IO) {
-        val requestBody = "{\"query\":\"$TRENDING_QUERY\"}"
+    private suspend fun fetchDiscoverData(): State.Success = withContext(Dispatchers.IO) {
+        val requestBody = "{\"query\":\"$DISCOVER_QUERY\"}"
             .toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url(ANILIST_URL)
@@ -73,18 +82,43 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(State.Lo
         }
 
         val parsed = discoverJson.decodeFromString(AniListResponse.serializer(), text)
-        parsed.data?.page?.media.orEmpty().map { media ->
-            Item(
-                id = media.id,
-                title = media.title?.english ?: media.title?.romaji ?: "Unknown",
-                coverUrl = media.coverImage?.large,
-                heroImageUrl = media.coverImage?.extraLarge ?: media.coverImage?.large,
-                genres = media.genres.orEmpty(),
-                year = media.seasonYear,
-                format = media.format,
-                score = media.averageScore,
-            )
+        val data = parsed.data ?: error("No data")
+
+        fun mapMediaList(mediaList: List<AniListMedia>?): List<Item> {
+            return mediaList.orEmpty().map { media ->
+                Item(
+                    id = media.id,
+                    title = media.title?.english ?: media.title?.romaji ?: "Unknown",
+                    coverUrl = media.coverImage?.large,
+                    heroImageUrl = media.coverImage?.extraLarge ?: media.coverImage?.large,
+                    genres = media.genres.orEmpty(),
+                    year = media.seasonYear,
+                    format = media.format,
+                    score = media.averageScore,
+                )
+            }
         }
+
+        val trendingItems = mapMediaList(data.trending?.media)
+        val popularItems = mapMediaList(data.popular?.media)
+        val actionItems = mapMediaList(data.action?.media)
+        val romanceItems = mapMediaList(data.romance?.media)
+        val fantasyItems = mapMediaList(data.fantasy?.media)
+        val topRatedItems = trendingItems.sortedByDescending { it.score ?: 0 }
+
+        val rows = listOf(
+            "Trending" to trendingItems,
+            "Top Rated" to topRatedItems,
+            "Popular Now" to popularItems,
+            "Action" to actionItems,
+            "Romance" to romanceItems,
+            "Fantasy" to fantasyItems,
+        )
+
+        State.Success(
+            items = trendingItems,
+            rows = rows,
+        )
     }
 }
 
@@ -95,7 +129,11 @@ private data class AniListResponse(
 
 @Serializable
 private data class AniListData(
-    @SerialName("Page") val page: AniListPage? = null,
+    @SerialName("trending") val trending: AniListPage? = null,
+    @SerialName("popular") val popular: AniListPage? = null,
+    @SerialName("action") val action: AniListPage? = null,
+    @SerialName("romance") val romance: AniListPage? = null,
+    @SerialName("fantasy") val fantasy: AniListPage? = null,
 )
 
 @Serializable
