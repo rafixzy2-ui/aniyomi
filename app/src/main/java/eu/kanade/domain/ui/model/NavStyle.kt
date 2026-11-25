@@ -42,9 +42,6 @@ enum class NavStyle(
         get() {
             return mutableListOf(
                 DiscoverTab,
-                AnimeLibraryTab,
-                UpdatesTab,
-                HistoriesTab,
                 BrowseTab,
                 MoreTab,
             ).apply { remove(this@NavStyle.moreTab) }
