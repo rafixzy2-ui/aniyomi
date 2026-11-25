@@ -301,6 +301,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                         text = item.title,
                                         style = MaterialTheme.typography.bodyMedium,
                                         maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
@@ -358,6 +359,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                         text = item.title,
                                         style = MaterialTheme.typography.bodyMedium,
                                         maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
@@ -423,6 +425,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                                 text = item.title,
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
                                             )
                                             Spacer(modifier = Modifier.height(2.dp))
                                             Text(
