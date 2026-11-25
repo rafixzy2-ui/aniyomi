@@ -29,7 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.util.fastForEach
+import androidx.compose.ui.util.fastForEachIndexed
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
@@ -108,11 +108,22 @@ object HomeScreen : Screen() {
                                 enter = expandVertically(),
                                 exit = shrinkVertically(),
                             ) {
-                                NavigationBar {
-                                    navStyle.tabs.fastForEach {
-                                        NavigationBarItem(it)
-                                    }
-                                }
+                                val selectedIndex = navStyle.tabs.indexOfFirst { it::class == tabNavigator.current::class }.coerceAtLeast(0)
+                                val scope = rememberCoroutineScope()
+                                val navigator = LocalNavigator.currentOrThrow
+                                FloatingNavBar(
+                                    tabs = navStyle.tabs,
+                                    selectedIndex = selectedIndex,
+                                    onTabClick = { index ->
+                                        val tab = navStyle.tabs[index]
+                                        val selected = tabNavigator.current::class == tab::class
+                                        if (!selected) {
+                                            tabNavigator.current = tab
+                                        } else {
+                                            scope.launch { tab.onReselect(navigator) }
+                                        }
+                                    },
+                                )
                             }
                         }
                     },
