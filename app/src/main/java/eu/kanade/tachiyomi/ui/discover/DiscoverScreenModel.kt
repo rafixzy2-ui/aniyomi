@@ -16,7 +16,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 private const val ANILIST_URL = "https://graphql.anilist.co"
 
 private const val TRENDING_QUERY =
-    "query { Page(page: 1, perPage: 20) { media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english } coverImage { large } averageScore } } }"
+    "query { Page(page: 1, perPage: 20) { media(type: ANIME, sort: TRENDING_DESC) { id title { romaji english } coverImage { extraLarge large } genres seasonYear format averageScore } } }"
 
 private val discoverJson = Json { ignoreUnknownKeys = true }
 
@@ -36,6 +36,10 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(State.Lo
         val id: Int,
         val title: String,
         val coverUrl: String?,
+        val heroImageUrl: String?,
+        val genres: List<String>,
+        val year: Int?,
+        val format: String?,
         val score: Int?,
     )
 
@@ -74,6 +78,10 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(State.Lo
                 id = media.id,
                 title = media.title?.english ?: media.title?.romaji ?: "Unknown",
                 coverUrl = media.coverImage?.large,
+                heroImageUrl = media.coverImage?.extraLarge ?: media.coverImage?.large,
+                genres = media.genres.orEmpty(),
+                year = media.seasonYear,
+                format = media.format,
                 score = media.averageScore,
             )
         }
@@ -100,6 +108,9 @@ private data class AniListMedia(
     val id: Int,
     val title: AniListTitle? = null,
     val coverImage: AniListCover? = null,
+    val genres: List<String>? = null,
+    val seasonYear: Int? = null,
+    val format: String? = null,
     val averageScore: Int? = null,
 )
 
@@ -111,5 +122,6 @@ private data class AniListTitle(
 
 @Serializable
 private data class AniListCover(
+    val extraLarge: String? = null,
     val large: String? = null,
 )
