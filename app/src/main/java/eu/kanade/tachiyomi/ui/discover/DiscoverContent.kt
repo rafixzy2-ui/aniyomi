@@ -145,18 +145,6 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                                 )
                                         )
 
-                                        // Light dark scrim at top
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(120.dp)
-                                                .background(
-                                                    Brush.verticalGradient(
-                                                        colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent)
-                                                    )
-                                                )
-                                        )
-
                                         // Content centered at the bottom
                                         Column(
                                             modifier = Modifier
