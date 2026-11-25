@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.discover
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,23 +16,29 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import eu.kanade.tachiyomi.ui.browse.anime.source.globalsearch.GlobalAnimeSearchScreen
+import kotlinx.coroutines.delay
 
 @Composable
 fun DiscoverContent(screenModel: DiscoverScreenModel) {
@@ -66,43 +73,73 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (current.items.isNotEmpty()) {
                     item(key = "hero") {
-                        val heroItem = current.items.first()
-                        Box(
+                        val heroItems = current.items.take(5)
+                        val pagerState = rememberPagerState(pageCount = { heroItems.size })
+
+                        LaunchedEffect(pagerState) {
+                            while (true) {
+                                delay(5000)
+                                val nextPage = (pagerState.currentPage + 1) % heroItems.size
+                                pagerState.animateScrollToPage(nextPage)
+                            }
+                        }
+
+                        HorizontalPager(
+                            state = pagerState,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(220.dp)
-                                .clickable {
-                                    navigator.push(GlobalAnimeSearchScreen(searchQuery = heroItem.title))
-                                }
-                        ) {
-                            if (heroItem.coverUrl != null) {
-                                AsyncImage(
-                                    model = heroItem.coverUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop,
-                                )
-                            }
+                                .height(260.dp)
+                        ) { page ->
+                            val heroItem = heroItems[page]
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .padding(16.dp)
+                                    .clickable {
+                                        navigator.push(GlobalAnimeSearchScreen(searchQuery = heroItem.title))
+                                    }
                             ) {
-                                Text(
-                                    text = heroItem.title,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    color = MaterialTheme.colorScheme.onPrimary,
+                                if (heroItem.coverUrl != null) {
+                                    AsyncImage(
+                                        model = heroItem.coverUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                                                startY = 0f,
+                                                endY = Float.POSITIVE_INFINITY
+                                            )
+                                        )
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(onClick = {
-                                    navigator.push(GlobalAnimeSearchScreen(searchQuery = heroItem.title))
-                                }) {
-                                    Text(text = "View Details")
+                                Column(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = heroItem.title,
+                                        style = MaterialTheme.typography.titleLarge,
+                                        color = Color.White,
+                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(
+                                        onClick = {
+                                            navigator.push(GlobalAnimeSearchScreen(searchQuery = heroItem.title))
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color.White,
+                                            contentColor = Color.Black
+                                        )
+                                    ) {
+                                        Text(text = "View Details")
+                                    }
                                 }
                             }
                         }
