@@ -46,6 +46,8 @@ fun MoreScreen(
     onClickDataAndStorage: () -> Unit,
     onClickPlayerSettings: () -> Unit,
     onClickSettings: () -> Unit,
+    onClickLibrary: () -> Unit,
+    onClickUpdates: () -> Unit,
     onClickAbout: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -83,6 +85,20 @@ fun MoreScreen(
                     title = navStyle.moreTab.options.title,
                     icon = navStyle.moreIcon,
                     onPreferenceClick = onClickAlt,
+                )
+            }
+            item {
+                TextPreferenceWidget(
+                    title = "Library",
+                    icon = Icons.Outlined.Storage,
+                    onPreferenceClick = onClickLibrary,
+                )
+            }
+            item {
+                TextPreferenceWidget(
+                    title = "Updates",
+                    icon = Icons.Outlined.GetApp,
+                    onPreferenceClick = onClickUpdates,
                 )
             }
 
