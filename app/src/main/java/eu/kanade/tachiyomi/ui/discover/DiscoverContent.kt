@@ -58,6 +58,24 @@ import kotlinx.coroutines.launch
 fun DiscoverContent(screenModel: DiscoverScreenModel) {
     val state by screenModel.state.collectAsState()
     val navigator = LocalNavigator.currentOrThrow
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var resolving by remember { mutableStateOf(false) }
+
+    val openAnime: (String) -> Unit = { title ->
+        if (!resolving) {
+            resolving = true
+            scope.launch {
+                val id = DiscoverResolver.resolveAnime(listOf(title))
+                resolving = false
+                if (id != null) {
+                    navigator.push(AnimeScreen(id))
+                } else {
+                    Toast.makeText(context, "Not found on your sources", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     when (val current = state) {
         is DiscoverScreenModel.State.Loading -> {
@@ -125,18 +143,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .clickable {
-                                                if (!resolving) {
-                                                    resolving = true
-                                                    scope.launch {
-                                                        val id = DiscoverResolver.resolveAnime(listOf(heroItem.title))
-                                                        resolving = false
-                                                        if (id != null) {
-                                                            navigator.push(AnimeScreen(id))
-                                                        } else {
-                                                            Toast.makeText(context, "Not found on your sources", Toast.LENGTH_SHORT).show()
-                                                        }
-                                                    }
-                                                }
+                                                openAnime(heroItem.title)
                                             }
                                     ) {
                                         val imageUrl = heroItem.heroImageUrl ?: heroItem.coverUrl
@@ -212,20 +219,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                             }
 
                                             Button(
-                                                onClick = {
-                                                    if (!resolving) {
-                                                        resolving = true
-                                                        scope.launch {
-                                                            val id = DiscoverResolver.resolveAnime(listOf(heroItem.title))
-                                                            resolving = false
-                                                            if (id != null) {
-                                                                navigator.push(AnimeScreen(id))
-                                                            } else {
-                                                                Toast.makeText(context, "Not found on your sources", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        }
-                                                    }
-                                                },
+                                                onClick = { openAnime(heroItem.title) },
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .height(48.dp),
@@ -294,7 +288,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                     modifier = Modifier
                                         .width(120.dp)
                                         .clickable {
-                                            navigator.push(GlobalAnimeSearchScreen(searchQuery = item.title))
+                                            openAnime(item.title)
                                         }
                                 ) {
                                     if (item.coverUrl != null) {
@@ -352,7 +346,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                     modifier = Modifier
                                         .width(120.dp)
                                         .clickable {
-                                            navigator.push(GlobalAnimeSearchScreen(searchQuery = item.title))
+                                            openAnime(item.title)
                                         }
                                 ) {
                                     if (item.coverUrl != null) {
@@ -418,7 +412,7 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                             modifier = Modifier
                                                 .width(120.dp)
                                                 .clickable {
-                                                    navigator.push(GlobalAnimeSearchScreen(searchQuery = item.title))
+                                                    openAnime(item.title)
                                                 }
                                         ) {
                                             if (item.coverUrl != null) {

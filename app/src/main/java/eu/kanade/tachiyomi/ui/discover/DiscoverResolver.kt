@@ -6,6 +6,7 @@ import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import tachiyomi.domain.entries.anime.interactor.NetworkToLocalAnime
@@ -21,8 +22,8 @@ object DiscoverResolver {
     private val networkToLocalAnime: NetworkToLocalAnime = Injekt.get()
     private val coroutineDispatcher = Executors.newFixedThreadPool(5).asCoroutineDispatcher()
 
-    suspend fun resolveAnime(titles: List<String>): Long? {
-        if (titles.isEmpty()) return null
+    suspend fun resolveAnime(titles: List<String>): Long? = coroutineScope {
+        if (titles.isEmpty()) return@coroutineScope null
         val enabledLanguages = sourcePreferences.enabledLanguages().get()
         val disabledSources = sourcePreferences.disabledAnimeSources().get()
         val sources = sourceManager.getAll()
@@ -58,6 +59,6 @@ object DiscoverResolver {
             }
         }.awaitAll()
 
-        return bestId
+        bestId
     }
 }
