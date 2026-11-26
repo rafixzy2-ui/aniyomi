@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.discover
 
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,12 +31,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,8 +50,9 @@ import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
-import eu.kanade.tachiyomi.ui.browse.anime.source.globalsearch.GlobalAnimeSearchScreen
+import eu.kanade.tachiyomi.ui.entries.anime.AnimeScreen
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun DiscoverContent(screenModel: DiscoverScreenModel) {
@@ -86,6 +93,9 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                     item(key = "hero") {
                         val heroItems = current.data.trending.take(5)
                         val pagerState = rememberPagerState(pageCount = { heroItems.size })
+                        val scope = rememberCoroutineScope()
+                        val context = LocalContext.current
+                        var resolving by remember { mutableStateOf(false) }
 
                         LaunchedEffect(pagerState) {
                             while (true) {
@@ -115,7 +125,18 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .clickable {
-                                                navigator.push(GlobalAnimeSearchScreen(searchQuery = heroItem.title))
+                                                if (!resolving) {
+                                                    resolving = true
+                                                    scope.launch {
+                                                        val id = DiscoverResolver.resolveAnime(listOf(heroItem.title))
+                                                        resolving = false
+                                                        if (id != null) {
+                                                            navigator.push(AnimeScreen(id))
+                                                        } else {
+                                                            Toast.makeText(context, "Not found on your sources", Toast.LENGTH_SHORT).show()
+                                                        }
+                                                    }
+                                                }
                                             }
                                     ) {
                                         val imageUrl = heroItem.heroImageUrl ?: heroItem.coverUrl
@@ -192,7 +213,18 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
 
                                             Button(
                                                 onClick = {
-                                                    navigator.push(GlobalAnimeSearchScreen(searchQuery = heroItem.title))
+                                                    if (!resolving) {
+                                                        resolving = true
+                                                        scope.launch {
+                                                            val id = DiscoverResolver.resolveAnime(listOf(heroItem.title))
+                                                            resolving = false
+                                                            if (id != null) {
+                                                                navigator.push(AnimeScreen(id))
+                                                            } else {
+                                                                Toast.makeText(context, "Not found on your sources", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        }
+                                                    }
                                                 },
                                                 modifier = Modifier
                                                     .fillMaxWidth()
