@@ -65,13 +65,14 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
     val openAnime: (String) -> Unit = { title ->
         if (!resolving) {
             resolving = true
+            Toast.makeText(context, "Finding episodes...", Toast.LENGTH_SHORT).show()
             scope.launch {
                 val id = DiscoverResolver.resolveAnime(listOf(title))
                 resolving = false
                 if (id != null) {
                     navigator.push(AnimeScreen(id))
                 } else {
-                    Toast.makeText(context, "Not found on your sources", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Not available in your installed sources", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -111,9 +112,6 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                     item(key = "hero") {
                         val heroItems = current.data.trending.take(5)
                         val pagerState = rememberPagerState(pageCount = { heroItems.size })
-                        val scope = rememberCoroutineScope()
-                        val context = LocalContext.current
-                        var resolving by remember { mutableStateOf(false) }
 
                         LaunchedEffect(pagerState) {
                             while (true) {
