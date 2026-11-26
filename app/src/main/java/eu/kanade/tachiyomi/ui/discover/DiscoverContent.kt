@@ -428,6 +428,10 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                         }
                     }
                 }
+
+                item(key = "bottom_spacer") {
+                    Spacer(modifier = Modifier.height(96.dp))
+                }
             }
         }
     }

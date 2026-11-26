@@ -6,6 +6,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -24,17 +25,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEachIndexed
 import eu.kanade.presentation.util.Tab
+import kotlin.math.roundToInt
 
 @Composable
 fun FloatingNavBar(
@@ -67,8 +72,12 @@ fun FloatingNavBar(
                 .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(50)),
             contentAlignment = Alignment.CenterStart,
         ) {
-            val indicatorOffset by animateDpAsState(
-                targetValue = (selectedIndex * 64).dp,
+            val itemWidth = 64.dp
+            val targetOffset = (selectedIndex.coerceAtLeast(0) * 64).toFloat()
+            var dragOffset by remember { mutableFloatStateOf(0f) }
+
+            val animatedOffset by animateDpAsState(
+                targetValue = (targetOffset + dragOffset).dp,
                 animationSpec = spring(
                     dampingRatio = 0.8f,
                     stiffness = Spring.StiffnessMediumLow,
@@ -76,18 +85,37 @@ fun FloatingNavBar(
                 label = "indicatorOffset",
             )
 
-            Box(
-                modifier = Modifier
-                    .offset { IntOffset(indicatorOffset.roundToPx(), 0) }
-                    .padding(4.dp)
-                    .size(width = 64.dp, height = 48.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)),
-            )
+            if (selectedIndex >= 0) {
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(animatedOffset.roundToPx(), 0) }
+                        .padding(4.dp)
+                        .size(width = 64.dp, height = 48.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)),
+                )
+            }
 
             Row(
                 modifier = Modifier
-                    .padding(4.dp),
+                    .padding(4.dp)
+                    .pointerInput(tabs) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { dragOffset = 0f },
+                            onDragEnd = {
+                                val currentPosition = targetOffset + dragOffset
+                                val rawIndex = (currentPosition / 64f).roundToInt()
+                                val clampedIndex = rawIndex.coerceIn(0, tabs.size - 1)
+                                dragOffset = 0f
+                                onTabClick(clampedIndex)
+                            },
+                            onHorizontalDrag = { _, dragAmount ->
+                                val maxOffset = ((tabs.size - 1) * 64).toFloat() - targetOffset
+                                val minOffset = -(targetOffset)
+                                dragOffset = (dragOffset + dragAmount).coerceIn(minOffset, maxOffset)
+                            }
+                        )
+                    },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 tabs.fastForEachIndexed { index, tab ->
@@ -113,10 +141,7 @@ fun FloatingNavBar(
                                 painter = tab.options.icon!!,
                                 contentDescription = tab.options.title,
                                 modifier = Modifier
-                                    .size(24.dp)
-                                    .graphicsLayer {
-                                        // gentle press scale could be added via interaction if desired, but let's keep it clean
-                                    },
+                                    .size(24.dp),
                             )
                         }
                     }

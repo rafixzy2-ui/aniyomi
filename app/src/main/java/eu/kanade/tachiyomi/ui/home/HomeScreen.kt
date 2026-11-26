@@ -3,8 +3,11 @@ package eu.kanade.tachiyomi.ui.home
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.RowScope
@@ -99,15 +102,47 @@ object HomeScreen : Screen() {
                             }
                         }
                     },
-                    bottomBar = {
+                    bottomBar = {},
+                    contentWindowInsets = WindowInsets(0),
+                ) { contentPadding ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(contentPadding)
+                            .consumeWindowInsets(contentPadding),
+                    ) {
+                        AnimatedContent(
+                            targetState = tabNavigator.current,
+                            transitionSpec = {
+                                materialFadeThroughIn(
+                                    initialScale = 1f,
+                                    durationMillis = TAB_FADE_DURATION,
+                                ) togetherWith
+                                    materialFadeThroughOut(durationMillis = TAB_FADE_DURATION)
+                            },
+                            label = "tabContent",
+                        ) { tabState ->
+                            tabNavigator.saveableState(key = "currentTab", tabState) {
+                                val contentModifier = if (tabState is eu.kanade.tachiyomi.ui.discover.DiscoverTab) {
+                                    Modifier.fillMaxSize()
+                                } else {
+                                    Modifier.fillMaxSize().padding(bottom = 88.dp)
+                                }
+                                Box(modifier = contentModifier) {
+                                    tabState.Content()
+                                }
+                            }
+                        }
+
                         if (!isTabletUi()) {
                             val bottomNavVisible by produceState(initialValue = true) {
                                 showBottomNavEvent.receiveAsFlow().collectLatest { value = it }
                             }
                             AnimatedVisibility(
                                 visible = bottomNavVisible && tabNavigator.current != navStyle.moreTab,
-                                enter = expandVertically(),
-                                exit = shrinkVertically(),
+                                enter = fadeIn(),
+                                exit = fadeOut(),
+                                modifier = Modifier.align(Alignment.BottomCenter),
                             ) {
                                 val selectedIndex = navStyle.tabs.indexOfFirst { it::class == tabNavigator.current::class }.coerceAtLeast(0)
                                 val scope = rememberCoroutineScope()
@@ -125,29 +160,6 @@ object HomeScreen : Screen() {
                                         }
                                     },
                                 )
-                            }
-                        }
-                    },
-                    contentWindowInsets = WindowInsets(0),
-                ) { contentPadding ->
-                    Box(
-                        modifier = Modifier
-                            .padding(contentPadding)
-                            .consumeWindowInsets(contentPadding),
-                    ) {
-                        AnimatedContent(
-                            targetState = tabNavigator.current,
-                            transitionSpec = {
-                                materialFadeThroughIn(
-                                    initialScale = 1f,
-                                    durationMillis = TAB_FADE_DURATION,
-                                ) togetherWith
-                                    materialFadeThroughOut(durationMillis = TAB_FADE_DURATION)
-                            },
-                            label = "tabContent",
-                        ) {
-                            tabNavigator.saveableState(key = "currentTab", it) {
-                                it.Content()
                             }
                         }
                     }
