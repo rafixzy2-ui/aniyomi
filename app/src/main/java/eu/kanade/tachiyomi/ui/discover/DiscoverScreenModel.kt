@@ -27,7 +27,11 @@ private val discoverJson = Json { ignoreUnknownKeys = true }
 
 private val discoverClient = OkHttpClient()
 
-class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(State.Loading) {
+private var cachedStateData: DiscoverScreenModel.StateData? = null
+
+class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(
+    cachedStateData?.let { State.Success(it) } ?: State.Loading
+) {
 
     data class StateData(
         val trending: List<Item>,
@@ -55,19 +59,80 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(State.Lo
     )
 
     init {
-        load()
+        if (cachedStateData == null) {
+            load()
+        } else {
+            // Background refresh
+            screenModelScope.launch {
+                try {
+                    val trending = fetchTrendingWithRetry()
+                    val additional = fetchAdditionalWithRetry()
+                    if (trending.isNotEmpty()) {
+                        val newData = StateData(trending, additional.first, additional.second, additional.third, additional.fourth)
+                        cachedStateData = newData
+                        mutableState.value = State.Success(newData)
+                    }
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     fun load() {
         mutableState.value = State.Loading
         screenModelScope.launch {
-            mutableState.value = try {
-                val trending = fetchTrending()
-                val additional = fetchAdditional()
-                State.Success(StateData(trending, additional.first, additional.second, additional.third, additional.fourth))
-            } catch (e: Exception) {
-                State.Error(e.message ?: "Network error")
+            var lastException: Exception? = null
+            var successData: StateData? = null
+
+            val delays = listOf(1000L, 2000L, 4000L)
+            for (attempt in 0..3) {
+                if (attempt > 0) {
+                    kotlinx.coroutines.delay(delays[attempt - 1])
+                }
+                try {
+                    val trending = fetchTrending()
+                    if (trending.isEmpty()) {
+                        error("Empty trending list received")
+                    }
+                    val additional = fetchAdditional()
+                    val data = StateData(trending, additional.first, additional.second, additional.third, additional.fourth)
+                    successData = data
+                    break
+                } catch (e: Exception) {
+                    lastException = e
+                }
             }
+
+            mutableState.value = if (successData != null) {
+                cachedStateData = successData
+                State.Success(successData)
+            } else {
+                val e = lastException
+                val msg = if (e != null) "${e.javaClass.simpleName}: ${e.message}" else "Network error"
+                State.Error(msg)
+            }
+        }
+    }
+
+    private suspend fun fetchTrendingWithRetry(): List<Item> {
+        var lastE: Exception? = null
+        val delays = listOf(1000L, 2000L, 4000L)
+        for (attempt in 0..3) {
+            if (attempt > 0) kotlinx.coroutines.delay(delays[attempt - 1])
+            try {
+                val res = fetchTrending()
+                if (res.isNotEmpty()) return res
+            } catch (e: Exception) {
+                lastE = e
+            }
+        }
+        throw lastE ?: Exception("Failed to fetch trending")
+    }
+
+    private suspend fun fetchAdditionalWithRetry(): FourLists {
+        try {
+            return fetchAdditional()
+        } catch (_: Exception) {
+            return FourLists(emptyList(), emptyList(), emptyList(), emptyList())
         }
     }
 
