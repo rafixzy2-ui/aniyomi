@@ -1,19 +1,31 @@
 package eu.kanade.tachiyomi.ui.discover
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -22,8 +34,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -138,109 +150,117 @@ fun OpenOverlay(
                 )
             }
 
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+                contentAlignment = Alignment.Center
             ) {
-                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                val scale by infiniteTransition.animateFloat(
-                    initialValue = 0.92f,
-                    targetValue = 1.0f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(250, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "scale"
-                )
-
-                Box(
-                    modifier = Modifier
-                        .size(width = 160.dp, height = 240.dp)
-                        .scale(scale)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    if (posterUrl != null) {
-                        AsyncImage(
-                            model = posterUrl,
-                            contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                        )
+                    // Poster Card
+                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                    val scale by infiniteTransition.animateFloat(
+                        initialValue = 0.98f,
+                        targetValue = 1.02f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1000),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "scalePulse"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(width = 160.dp, height = 240.dp)
+                            .scale(if (lookupState is LookupState.Loading) scale else 1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        if (posterUrl != null) {
+                            AsyncImage(
+                                model = posterUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp,
+                            color = Color.White
+                        ),
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.width(280.dp)
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                when (lookupState) {
-                    is LookupState.Loading -> {
-                        var statusText by remember { mutableStateOf("Finding sources...") }
-                        LaunchedEffect(Unit) {
-                            while (true) {
-                                delay(1200)
-                                statusText = if (statusText == "Finding sources...") "Checking episodes..." else "Finding sources..."
+                    when (lookupState) {
+                        is LookupState.Loading -> {
+                            var statusMessageIndex by remember { mutableStateOf(0) }
+                            LaunchedEffect(Unit) {
+                                while (true) {
+                                    delay(1200)
+                                    statusMessageIndex = (statusMessageIndex + 1) % 2
+                                }
+                            }
+
+                            Text(
+                                text = if (statusMessageIndex == 0) "Finding sources..." else "Checking episodes...",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .width(200.dp)
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp)),
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                        is LookupState.NotFound -> {
+                            Text(
+                                text = "No playable source found",
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "None of your installed sources have this title.",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color.White.copy(alpha = 0.7f)
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color.White
+                                ),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                            ) {
+                                Text("Close")
                             }
                         }
-
-                        Text(
-                            text = statusText,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White.copy(alpha = 0.8f),
-                            textAlign = TextAlign.Center,
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .width(200.dp)
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(2.dp)),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    is LookupState.NotFound -> {
-                        Text(
-                            text = "No playable source found",
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White,
-                            textAlign = TextAlign.Center,
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "None of your installed sources have this title.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center,
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-                        OutlinedButton(
-                            onClick = onDismiss,
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(20.dp),
-                        ) {
-                            Text(text = "Close")
-                        }
                     }
                 }
             }
@@ -249,421 +269,280 @@ fun OpenOverlay(
 }
 
 @Composable
-fun PosterCard(
-    item: DiscoverScreenModel.Item,
-    onClick: () -> Unit,
-    rank: Int? = null,
+fun DiscoverContent(
+    state: DiscoverScreenModel.State,
+    onRefresh: () -> Unit,
 ) {
-    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, label = "scale")
-
-    Column(
-        modifier = Modifier
-            .width(140.dp)
-            .scale(scale)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(14.dp))
-        ) {
-            AsyncImage(
-                model = item.coverUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)), startY = 300f))
-            )
-
-            // Rating pill
-            if (item.score != null) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(8.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color.Black.copy(alpha = 0.65f),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Star, null, tint = Color.Yellow, modifier = Modifier.size(10.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("%.1f".format(item.score / 10.0), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            // Rank pill
-            if (rank != null) {
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                ) {
-                    Text("#$rank Today", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
-                }
-            }
-
-            // Border
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.Transparent)
-                    .border(androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(14.dp))
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = item.title,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, fontSize = 13.sp),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            color = Color.White
-        )
-        val meta = mutableListOf<String>()
-        item.format?.let { meta.add(it) }
-        item.year?.let { meta.add(it.toString()) }
-        if (meta.isNotEmpty()) {
-            Text(
-                text = meta.joinToString(" "),
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = Color.White.copy(alpha = 0.6f),
-                maxLines = 1,
-            )
-        }
-    }
-}
-
-@Composable
-fun DiscoverContent(screenModel: DiscoverScreenModel) {
-    val state by screenModel.state.collectAsState()
     val navigator = LocalNavigator.currentOrThrow
-    val scope = rememberCoroutineScope()
-    var currentLookupJob by remember { mutableStateOf<Job?>(null) }
-    var lookupState by remember { mutableStateOf<LookupState?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val resolver = remember { DiscoverResolver() }
 
-    val openAnime: (String, String?) -> Unit = { title, posterUrl ->
+    var lookupState by remember { mutableStateOf<LookupState?>(null) }
+    var currentLookupJob by remember { mutableStateOf<Job?>(null) }
+
+    fun openAnime(titles: List<String>, fallbackTitle: String, posterUrl: String?) {
         currentLookupJob?.cancel()
-        lookupState = LookupState.Loading(title = title, posterUrl = posterUrl)
-        currentLookupJob = scope.launch {
+        lookupState = LookupState.Loading(fallbackTitle, posterUrl)
+        currentLookupJob = coroutineScope.launch {
             try {
-                val id = DiscoverResolver.resolveAnime(listOf(title))
-                withContext(Dispatchers.Main) {
-                    if (id != null) {
-                        lookupState = null
-                        navigator.push(AnimeScreen(id))
-                    } else {
-                        lookupState = LookupState.NotFound(title = title, posterUrl = posterUrl)
+                val animeId = resolver.resolveAnime(titles)
+                if (animeId != null) {
+                    lookupState = null
+                    withContext(Dispatchers.Main) {
+                        navigator.push(AnimeScreen(animeId))
                     }
+                } else {
+                    lookupState = LookupState.NotFound(fallbackTitle, posterUrl)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                withContext(Dispatchers.Main) {
-                    lookupState = LookupState.NotFound(title = title, posterUrl = posterUrl)
-                }
-            } finally {
-                if (currentLookupJob == coroutineContext[Job]) {
-                    currentLookupJob = null
-                }
+                lookupState = LookupState.NotFound(fallbackTitle, posterUrl)
             }
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        when (val current = state) {
-            is DiscoverScreenModel.State.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-            is DiscoverScreenModel.State.Error -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(text = current.message)
-                    Button(onClick = { screenModel.load() }) {
-                        Text(text = "Retry")
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Hero Pager
+            if (state.heroItems.isNotEmpty()) {
+                item {
+                    val pagerState = rememberPagerState(pageCount = { state.heroItems.size })
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(420.dp)
+                    ) {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxSize()
+                        ) { page ->
+                            val item = state.heroItems[page]
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable {
+                                        val titles = listOfNotNull(item.title, item.englishTitle, item.romajiTitle)
+                                        openAnime(titles, item.title, item.bannerUrl ?: item.coverUrl)
+                                    }
+                            ) {
+                                AsyncImage(
+                                    model = item.bannerUrl ?: item.coverUrl,
+                                    contentDescription = item.title,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colorStops = arrayOf(
+                                                    0.0f to Color.Transparent,
+                                                    0.6f to Color.Black.copy(alpha = 0.3f),
+                                                    1.0f to MaterialTheme.colorScheme.background
+                                                )
+                                            )
+                                        )
+                                )
+                                Column(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(20.dp)
+                                ) {
+                                    Text(
+                                        text = item.title,
+                                        style = MaterialTheme.typography.headlineMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        ),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(
+                                        onClick = {
+                                            val titles = listOfNotNull(item.title, item.englishTitle, item.romajiTitle)
+                                            openAnime(titles, item.title, item.bannerUrl ?: item.coverUrl)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    ) {
+                                        Text("Watch Now")
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
-            is DiscoverScreenModel.State.Success -> {
-                val trendingItems = current.data.trending
-                val topRatedItems = current.data.trending.sortedByDescending { it.score ?: 0 }
-                val popularItems = current.data.popular
-                val actionItems = current.data.action
-                val romanceItems = current.data.romance
-                val fantasyItems = current.data.fantasy
 
-                LaunchedEffect(current.data.trending) {
-                    val heroTitles = current.data.trending.take(5).map { it.title }
-                    DiscoverResolver.prefetchHero(heroTitles)
-                }
+            // Rows
+            items(state.rows) { row ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp)
+                ) {
+                    Text(
+                        text = row.title,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
+                        ),
+                        modifier = Modifier.padding(start = 16.dp, bottom = 12.dp)
+                    )
 
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    if (current.data.trending.isNotEmpty()) {
-                        item(key = "hero") {
-                            val heroItems = current.data.trending.take(5)
-                            val pagerState = rememberPagerState(pageCount = { heroItems.size })
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp)
+                    ) {
+                        items(row.items) { item ->
+                            val isTrendingRow = row.title.equals("Trending", ignoreCase = true)
+                            val rank = if (isTrendingRow) row.items.indexOf(item) + 1 else null
 
-                            LaunchedEffect(pagerState) {
-                                while (true) {
-                                    delay(5000)
-                                    val nextPage = (pagerState.currentPage + 1) % heroItems.size
-                                    pagerState.animateScrollToPage(nextPage)
-                                }
-                            }
+                            val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                            val isPressed by interactionSource.collectIsPressedAsState()
+                            val scale by animateFloatAsState(
+                                targetValue = if (isPressed) 0.96f else 1f,
+                                label = "cardScale"
+                            )
 
                             Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 12.dp)
+                                    .width(140.dp)
+                                    .scale(scale)
+                                    .clickable(
+                                        interactionSource = interactionSource,
+                                        indication = null
+                                    ) {
+                                        val titles = listOfNotNull(item.title, item.englishTitle, item.romajiTitle)
+                                        openAnime(titles, item.title, item.coverUrl)
+                                    }
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(480.dp)
-                                        .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+                                        .width(140.dp)
+                                        .aspectRatio(2f / 3f)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .border(
+                                            BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                                            RoundedCornerShape(14.dp)
+                                        )
                                 ) {
-                                    HorizontalPager(
-                                        state = pagerState,
-                                        modifier = Modifier.fillMaxSize()
-                                    ) { page ->
-                                        val heroItem = heroItems[page]
-                                        val heroImageUrl = heroItem.heroImageUrl ?: heroItem.coverUrl
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clickable {
-                                                    openAnime(heroItem.title, heroImageUrl)
-                                                }
-                                        ) {
-                                            if (heroImageUrl != null) {
-                                                AsyncImage(
-                                                    model = heroImageUrl,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop,
-                                                    alignment = Alignment.TopCenter,
-                                                )
-                                            }
+                                    AsyncImage(
+                                        model = item.coverUrl,
+                                        contentDescription = item.title,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
 
-                                            // Dark gradient over the image using colorStops
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .background(
-                                                        Brush.verticalGradient(
-                                                            colorStops = arrayOf(
-                                                                0.0f to Color.Transparent,
-                                                                0.5f to Color.Transparent,
-                                                                0.8f to MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
-                                                                1.0f to MaterialTheme.colorScheme.background
-                                                            )
-                                                        )
-                                                    )
-                                            )
-
-                                            // Content centered at the bottom
-                                            Column(
-                                                modifier = Modifier
-                                                    .align(Alignment.BottomCenter)
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 24.dp)
-                                                    .padding(bottom = 24.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                            ) {
-                                                Text(
-                                                    text = heroItem.title,
-                                                    style = MaterialTheme.typography.titleLarge.copy(
-                                                        fontSize = 28.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                    ),
-                                                    color = Color.White,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    textAlign = TextAlign.Center,
-                                                )
-                                                Spacer(modifier = Modifier.height(4.dp))
-
-                                                val detailsList = mutableListOf<String>()
-                                                heroItem.format?.let { detailsList.add(it) }
-                                                val genresPart = heroItem.genres.take(2)
-                                                if (genresPart.isNotEmpty()) {
-                                                    detailsList.add(genresPart.joinToString(", "))
-                                                }
-                                                heroItem.year?.let { detailsList.add(it.toString()) }
-                                                heroItem.score?.let { detailsList.add("★ %.1f".format(it / 10.0)) }
-
-                                                if (detailsList.isNotEmpty()) {
-                                                    Text(
-                                                        text = detailsList.joinToString(" • "),
-                                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                                            fontSize = 14.sp
-                                                        ),
-                                                        color = Color.White.copy(alpha = 0.8f),
-                                                        textAlign = TextAlign.Center,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                    )
-                                                    Spacer(modifier = Modifier.height(12.dp))
-                                                }
-
-                                                Button(
-                                                    onClick = { openAnime(heroItem.title, heroImageUrl) },
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(48.dp),
-                                                    colors = ButtonDefaults.buttonColors(
-                                                        containerColor = Color.White,
-                                                        contentColor = Color.Black
-                                                    ),
-                                                    shape = RoundedCornerShape(24.dp)
-                                                ) {
-                                                    Text(
-                                                        text = "View Details",
-                                                        fontWeight = FontWeight.Bold,
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    // Page-indicator dots under the button, or at bottom inside the Box
-                                    Row(
+                                    // Gradient overlay on bottom
+                                    Box(
                                         modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(60.dp)
                                             .align(Alignment.BottomCenter)
-                                            .padding(bottom = 8.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        heroItems.forEachIndexed { index, _ ->
-                                            val isSelected = pagerState.currentPage == index
-                                            if (isSelected) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .width(24.dp)
-                                                        .height(8.dp)
-                                                        .clip(RoundedCornerShape(4.dp))
-                                                        .background(Color.White)
+                                            .background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f))
                                                 )
-                                            } else {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(8.dp)
-                                                        .clip(CircleShape)
-                                                        .background(Color.White.copy(alpha = 0.5f))
+                                            )
+                                    )
+
+                                    // Score pill (bottom-left)
+                                    if (item.score != null && item.score > 0) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .padding(8.dp),
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = Color.Black.copy(alpha = 0.65f)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Star,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFFFFC107),
+                                                    modifier = Modifier.size(11.dp)
+                                                )
+                                                Text(
+                                                    text = String.format("%.1f", item.score),
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        fontWeight = FontWeight.Bold,
+                                                        fontSize = 11.sp,
+                                                        color = Color.White
+                                                    )
                                                 )
                                             }
                                         }
                                     }
-                                }
-                            }
-                        }
-                    }
 
-                    item(key = "trending_section") {
-                        Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                            Text(
-                                text = "Trending",
-                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold),
-                                modifier = Modifier.padding(start = 16.dp, bottom = 12.dp),
-                            )
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-                            ) {
-                                items(trendingItems.take(20), key = { "trending_${it.id}" }) { item ->
-                                    PosterCard(
-                                        item = item,
-                                        onClick = { openAnime(item.title, item.coverUrl) },
-                                        rank = trendingItems.indexOf(item) + 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    item(key = "top_rated_section") {
-                        Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                            Text(
-                                text = "Top Rated",
-                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold),
-                                modifier = Modifier.padding(start = 16.dp, bottom = 12.dp),
-                            )
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-                            ) {
-                                items(topRatedItems.take(20), key = { "top_${it.id}" }) { item ->
-                                    PosterCard(
-                                        item = item,
-                                        onClick = { openAnime(item.title, item.coverUrl) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    val extraRows = listOf(
-                        "Popular" to popularItems,
-                        "Action" to actionItems,
-                        "Romance" to romanceItems,
-                        "Fantasy" to fantasyItems,
-                    )
-                    extraRows.forEach { (sectionTitle, sectionItems) ->
-                        if (sectionItems.isNotEmpty()) {
-                            item(key = "section_${sectionTitle.lowercase()}") {
-                                Column(modifier = Modifier.padding(vertical = 12.dp)) {
-                                    Text(
-                                        text = sectionTitle,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold),
-                                        modifier = Modifier.padding(start = 16.dp, bottom = 12.dp),
-                                    )
-                                    LazyRow(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-                                    ) {
-                                        items(sectionItems.take(20), key = { "${sectionTitle}_${it.id}" }) { item ->
-                                            PosterCard(
-                                                item = item,
-                                                onClick = { openAnime(item.title, item.coverUrl) },
+                                    // Rank pill for Trending (top-left)
+                                    if (rank != null) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .align(Alignment.TopStart)
+                                                .padding(8.dp),
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                                        ) {
+                                            Text(
+                                                text = "#$rank Today",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 11.sp,
+                                                    color = Color.White
+                                                ),
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                                             )
                                         }
                                     }
                                 }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = item.title,
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    ),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                val formatYearText = listOfNotNull(
+                                    item.format?.let { if (it.isNotBlank()) it.uppercase() else null },
+                                    item.year?.let { if (it > 0) it.toString() else null }
+                                ).joinToString(" ")
+
+                                if (formatYearText.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = formatYearText,
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                                        ),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     }
 
-                    item(key = "bottom_spacer") {
-                        Spacer(modifier = Modifier.height(96.dp))
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
