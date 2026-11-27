@@ -577,46 +577,22 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                                     ) {
                                         items(sectionItems, key = { "${sectionTitle}_${it.id}" }) { item ->
-                                            Column(
-                                                modifier = Modifier
-                                                    .width(120.dp)
-                                                    .clickable {
-                                                        openAnime(item.title, item.coverUrl)
-                                                    }
-                                            ) {
-                                                if (item.coverUrl != null) {
-                                                    AsyncImage(
-                                                        model = item.coverUrl,
-                                                        contentDescription = null,
-                                                        modifier = Modifier
-                                                            .width(120.dp)
-                                                            .height(170.dp)
-                                                            .clip(RoundedCornerShape(8.dp)),
-                                                        contentScale = ContentScale.Crop,
-                                                    )
-                                                } else {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .width(120.dp)
-                                                            .height(170.dp)
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = item.title,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = item.score?.let { "Score: %.1f".format(it / 10.0) } ?: "Score: -",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.secondary,
-                                                )
+                                            val formatStr = item.format?.let { f -> f.uppercase() }
+                                            val yearStr = item.year?.toString()
+                                            val subtitle = when {
+                                                formatStr != null && yearStr != null -> "$formatStr $yearStr"
+                                                formatStr != null -> formatStr
+                                                yearStr != null -> yearStr
+                                                else -> null
                                             }
+                                            PremiumPosterCard(
+                                                title = item.title,
+                                                posterUrl = item.coverUrl,
+                                                scoreText = item.score?.let { "%.1f".format(it / 10.0) },
+                                                rankText = null,
+                                                subtitle = subtitle,
+                                                onClick = { openAnime(item.title, item.coverUrl) }
+                                            )
                                         }
                                     }
                                 }

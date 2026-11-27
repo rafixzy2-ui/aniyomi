@@ -1,26 +1,24 @@
 package eu.kanade.tachiyomi.ui.discover
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,10 +28,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,8 +70,8 @@ fun PremiumPosterCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(2f / 3f)
-                .clip(RoundedCornerShape(14.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(14.dp)),
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
         ) {
             AsyncImage(
                 model = posterUrl,
@@ -82,28 +85,67 @@ fun PremiumPosterCard(
                     .matchParentSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)),
-                            startY = 100f,
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)),
+                            startY = 150f,
                         ),
                     ),
             )
 
-            if (scoreText != null) {
-                Row(
+            // Title on poster
+            Text(
+                text = title.uppercase(),
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black,
+                lineHeight = 16.sp,
+                letterSpacing = 0.4.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.6f),
+                        offset = Offset(0f, 2f),
+                        blurRadius = 6f,
+                    ),
+                ),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(10.dp)
+                    .fillMaxWidth(),
+            )
+
+            // Rating circle
+            val scoreFloat = scoreText?.toFloatOrNull()
+            if (scoreFloat != null) {
+                val ringColor = when {
+                    scoreFloat >= 8.0f -> Color(0xFF21D07A)
+                    scoreFloat >= 6.5f -> Color(0xFFD2D531)
+                    else -> Color(0xFFF65605)
+                }
+                Box(
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(6.dp)
-                        .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(36.dp)
+                        .background(Color.Black.copy(alpha = 0.7f), CircleShape),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = Color(0xFFFFC107),
-                    )
+                    Canvas(modifier = Modifier.fillMaxSize().padding(3.dp)) {
+                        val strokeWidth = 3.dp.toPx()
+                        drawCircle(
+                            color = Color.White.copy(alpha = 0.2f),
+                            radius = (size.minDimension - strokeWidth) / 2f,
+                            style = Stroke(width = strokeWidth),
+                        )
+                        drawArc(
+                            color = ringColor,
+                            startAngle = -90f,
+                            sweepAngle = (scoreFloat / 10f) * 360f,
+                            useCenter = false,
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                        )
+                    }
                     Text(
                         text = scoreText,
                         color = Color.White,
@@ -113,37 +155,60 @@ fun PremiumPosterCard(
                 }
             }
 
+            // Rank pill
             if (rankText != null) {
+                val parts = rankText.split(" ", limit = 2)
+                val rankNum = parts.getOrNull(0) ?: ""
+                val rankLabel = parts.getOrNull(1) ?: ""
+
+                val gradientColors = when (rankNum) {
+                    "#1" -> listOf(Color(0xFFFFE082), Color(0xFFFFB300))
+                    "#2" -> listOf(Color(0xFFF5F5F5), Color(0xFFB0BEC5))
+                    "#3" -> listOf(Color(0xFFFFCC80), Color(0xFFD2824A))
+                    else -> listOf(Color(0xFFFF8A3D), Color(0xFFF65605))
+                }
+                val textColor = if (rankNum == "#1" || rankNum == "#2" || rankNum == "#3") {
+                    Color.Black.copy(alpha = 0.85f)
+                } else {
+                    Color.White
+                }
+
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(6.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.9f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                        .padding(8.dp)
+                        .background(
+                            brush = Brush.horizontalGradient(gradientColors),
+                            shape = RoundedCornerShape(10.dp),
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
-                    Text(
-                        text = rankText,
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = rankNum,
+                            color = textColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Black,
+                        )
+                        if (rankLabel.isNotEmpty()) {
+                            Text(
+                                text = rankLabel.uppercase(),
+                                color = textColor,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 1.sp,
+                            )
+                        }
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = title,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-
         if (subtitle != null) {
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = subtitle,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
