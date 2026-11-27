@@ -51,8 +51,12 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import coil3.compose.AsyncImage
 import eu.kanade.tachiyomi.ui.entries.anime.AnimeScreen
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun DiscoverContent(screenModel: DiscoverScreenModel) {
@@ -60,19 +64,30 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
     val navigator = LocalNavigator.currentOrThrow
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var resolving by remember { mutableStateOf(false) }
+    var currentLookupJob by remember { mutableStateOf<Job?>(null) }
 
     val openAnime: (String) -> Unit = { title ->
-        if (!resolving) {
-            resolving = true
-            Toast.makeText(context, "Finding episodes...", Toast.LENGTH_SHORT).show()
-            scope.launch {
+        currentLookupJob?.cancel()
+        Toast.makeText(context, "Finding episodes...", Toast.LENGTH_SHORT).show()
+        currentLookupJob = scope.launch {
+            try {
                 val id = DiscoverResolver.resolveAnime(listOf(title))
-                resolving = false
-                if (id != null) {
-                    navigator.push(AnimeScreen(id))
-                } else {
+                withContext(Dispatchers.Main) {
+                    if (id != null) {
+                        navigator.push(AnimeScreen(id))
+                    } else {
+                        Toast.makeText(context, "Not available in your installed sources", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
                     Toast.makeText(context, "Not available in your installed sources", Toast.LENGTH_SHORT).show()
+                }
+            } finally {
+                if (currentLookupJob == coroutineContext[Job]) {
+                    currentLookupJob = null
                 }
             }
         }
@@ -106,6 +121,11 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
             val actionItems = current.data.action
             val romanceItems = current.data.romance
             val fantasyItems = current.data.fantasy
+
+            LaunchedEffect(current.data.trending) {
+                val heroTitles = current.data.trending.take(5).map { it.title }
+                DiscoverResolver.prefetchHero(heroTitles)
+            }
 
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 if (current.data.trending.isNotEmpty()) {
