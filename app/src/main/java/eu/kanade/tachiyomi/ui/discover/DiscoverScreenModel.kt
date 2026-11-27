@@ -21,7 +21,7 @@ private const val TRENDING_QUERY =
     "query { Page(page: 1, perPage: 20) { media(type: ANIME, sort: TRENDING_DESC, isAdult: false) { id title { romaji english } coverImage { extraLarge large } genres seasonYear format averageScore } } }"
 
 private const val ADDITIONAL_ROWS_QUERY =
-    "query { popular: Page(page:1, perPage:20){ media(type:ANIME, sort:POPULARITY_DESC, isAdult:false){ id title{romaji english} coverImage{large} averageScore } } action: Page(page:1, perPage:20){ media(type:ANIME, genre:\"Action\", sort:POPULARITY_DESC, isAdult:false){ id title{romaji english} coverImage{large} averageScore } } romance: Page(page:1, perPage:20){ media(type:ANIME, genre:\"Romance\", sort:POPULARITY_DESC, isAdult:false){ id title{romaji english} coverImage{large} averageScore } } fantasy: Page(page:1, perPage:20){ media(type:ANIME, genre:\"Fantasy\", sort:POPULARITY_DESC, isAdult:false){ id title{romaji english} coverImage{large} averageScore } } }"
+    "query { popular: Page(page:1, perPage:30){ media(type:ANIME, status:RELEASING, sort:POPULARITY_DESC, isAdult:false){ id title{romaji english} coverImage{large} averageScore } } action: Page(page:1, perPage:30){ media(type:ANIME, genre:\"Action\", sort:SCORE_DESC, isAdult:false){ id title{romaji english} coverImage{large} averageScore } } romance: Page(page:1, perPage:30){ media(type:ANIME, genre:\"Romance\", sort:SCORE_DESC, isAdult:false){ id title{romaji english} coverImage{large} averageScore } } fantasy: Page(page:1, perPage:30){ media(type:ANIME, genre:\"Fantasy\", sort:SCORE_DESC, isAdult:false){ id title{romaji english} coverImage{large} averageScore } } }"
 
 private val discoverJson = Json { ignoreUnknownKeys = true }
 
@@ -68,7 +68,7 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(
                     val trending = fetchTrendingWithRetry()
                     val additional = fetchAdditionalWithRetry()
                     if (trending.isNotEmpty()) {
-                        val newData = StateData(trending, additional.first, additional.second, additional.third, additional.fourth)
+                        val newData = processAndCreateState(trending, additional)
                         cachedStateData = newData
                         mutableState.value = State.Success(newData)
                     }
@@ -94,7 +94,7 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(
                         error("Empty trending list received")
                     }
                     val additional = fetchAdditional()
-                    val data = StateData(trending, additional.first, additional.second, additional.third, additional.fourth)
+                    val data = processAndCreateState(trending, additional)
                     successData = data
                     break
                 } catch (e: Exception) {
@@ -111,6 +111,30 @@ class DiscoverScreenModel : StateScreenModel<DiscoverScreenModel.State>(
                 State.Error(msg)
             }
         }
+    }
+
+    private fun processAndCreateState(trending: List<Item>, additional: FourLists): StateData {
+        val usedIds = mutableSetOf<Int>()
+        usedIds.addAll(trending.map { it.id })
+
+        fun dedupeAndLimit(items: List<Item>): List<Item> {
+            val filtered = mutableListOf<Item>()
+            for (item in items) {
+                if (usedIds.add(item.id)) {
+                    filtered.add(item)
+                    if (filtered.size >= 20) break
+                }
+            }
+            return filtered
+        }
+
+        return StateData(
+            trending = trending,
+            popular = dedupeAndLimit(additional.first),
+            action = dedupeAndLimit(additional.second),
+            romance = dedupeAndLimit(additional.third),
+            fantasy = dedupeAndLimit(additional.fourth),
+        )
     }
 
     private suspend fun fetchTrendingWithRetry(): List<Item> {
