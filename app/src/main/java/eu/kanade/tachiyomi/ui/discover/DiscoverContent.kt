@@ -1,17 +1,8 @@
 package eu.kanade.tachiyomi.ui.discover
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -31,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -250,6 +244,109 @@ fun OpenOverlay(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun PosterCard(
+    item: DiscoverScreenModel.Item,
+    onClick: () -> Unit,
+    rank: Int? = null,
+) {
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (isPressed) 0.96f else 1f, label = "scale")
+
+    Column(
+        modifier = Modifier
+            .width(140.dp)
+            .scale(scale)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(14.dp))
+        ) {
+            AsyncImage(
+                model = item.coverUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)), startY = 300f))
+            )
+
+            // Rating pill
+            if (item.score != null) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color.Black.copy(alpha = 0.65f),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Star, null, tint = Color.Yellow, modifier = Modifier.size(10.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("%.1f".format(item.score / 10.0), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // Rank pill
+            if (rank != null) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                ) {
+                    Text("#$rank Today", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp))
+                }
+            }
+
+            // Border
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color.Transparent)
+                    .border(androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)), RoundedCornerShape(14.dp))
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, fontSize = 13.sp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            color = Color.White
+        )
+        val meta = mutableListOf<String>()
+        item.format?.let { meta.add(it) }
+        item.year?.let { meta.add(it.toString()) }
+        if (meta.isNotEmpty()) {
+            Text(
+                text = meta.joinToString(" "),
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                color = Color.White.copy(alpha = 0.6f),
+                maxLines = 1,
+            )
         }
     }
 }
@@ -491,55 +588,20 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                         Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             Text(
                                 text = "Trending",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(start = 16.dp, bottom = 12.dp),
                             )
                             LazyRow(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                             ) {
-                                items(trendingItems, key = { "trending_${it.id}" }) { item ->
-                                    Column(
-                                        modifier = Modifier
-                                            .width(120.dp)
-                                            .clickable {
-                                                openAnime(item.title, item.coverUrl)
-                                            }
-                                    ) {
-                                        if (item.coverUrl != null) {
-                                            AsyncImage(
-                                                model = item.coverUrl,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .width(120.dp)
-                                                    .height(170.dp)
-                                                    .clip(RoundedCornerShape(8.dp)),
-                                                contentScale = ContentScale.Crop,
-                                            )
-                                        } else {
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(120.dp)
-                                                    .height(170.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = item.title,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = item.score?.let { "Score: %.1f".format(it / 10.0) } ?: "Score: -",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.secondary,
-                                        )
-                                    }
+                                items(trendingItems.take(20), key = { "trending_${it.id}" }) { item ->
+                                    PosterCard(
+                                        item = item,
+                                        onClick = { openAnime(item.title, item.coverUrl) },
+                                        rank = trendingItems.indexOf(item) + 1
+                                    )
                                 }
                             }
                         }
@@ -549,55 +611,19 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                         Column(modifier = Modifier.padding(vertical = 12.dp)) {
                             Text(
                                 text = "Top Rated",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold),
+                                modifier = Modifier.padding(start = 16.dp, bottom = 12.dp),
                             )
                             LazyRow(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                             ) {
-                                items(topRatedItems, key = { "top_${it.id}" }) { item ->
-                                    Column(
-                                        modifier = Modifier
-                                            .width(120.dp)
-                                            .clickable {
-                                                openAnime(item.title, item.coverUrl)
-                                            }
-                                    ) {
-                                        if (item.coverUrl != null) {
-                                            AsyncImage(
-                                                model = item.coverUrl,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .width(120.dp)
-                                                    .height(170.dp)
-                                                    .clip(RoundedCornerShape(8.dp)),
-                                                contentScale = ContentScale.Crop,
-                                            )
-                                        } else {
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(120.dp)
-                                                    .height(170.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                            )
-                                        }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            text = item.title,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = item.score?.let { "Score: %.1f".format(it / 10.0) } ?: "Score: -",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.secondary,
-                                        )
-                                    }
+                                items(topRatedItems.take(20), key = { "top_${it.id}" }) { item ->
+                                    PosterCard(
+                                        item = item,
+                                        onClick = { openAnime(item.title, item.coverUrl) },
+                                    )
                                 }
                             }
                         }
@@ -615,55 +641,19 @@ fun DiscoverContent(screenModel: DiscoverScreenModel) {
                                 Column(modifier = Modifier.padding(vertical = 12.dp)) {
                                     Text(
                                         text = sectionTitle,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 20.sp, fontWeight = FontWeight.Bold),
+                                        modifier = Modifier.padding(start = 16.dp, bottom = 12.dp),
                                     )
                                     LazyRow(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
                                     ) {
-                                        items(sectionItems, key = { "${sectionTitle}_${it.id}" }) { item ->
-                                            Column(
-                                                modifier = Modifier
-                                                    .width(120.dp)
-                                                    .clickable {
-                                                        openAnime(item.title, item.coverUrl)
-                                                    }
-                                            ) {
-                                                if (item.coverUrl != null) {
-                                                    AsyncImage(
-                                                        model = item.coverUrl,
-                                                        contentDescription = null,
-                                                        modifier = Modifier
-                                                            .width(120.dp)
-                                                            .height(170.dp)
-                                                            .clip(RoundedCornerShape(8.dp)),
-                                                        contentScale = ContentScale.Crop,
-                                                    )
-                                                } else {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .width(120.dp)
-                                                            .height(170.dp)
-                                                            .clip(RoundedCornerShape(8.dp))
-                                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                Text(
-                                                    text = item.title,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = item.score?.let { "Score: %.1f".format(it / 10.0) } ?: "Score: -",
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.secondary,
-                                                )
-                                            }
+                                        items(sectionItems.take(20), key = { "${sectionTitle}_${it.id}" }) { item ->
+                                            PosterCard(
+                                                item = item,
+                                                onClick = { openAnime(item.title, item.coverUrl) },
+                                            )
                                         }
                                     }
                                 }
