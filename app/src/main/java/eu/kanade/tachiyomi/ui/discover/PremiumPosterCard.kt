@@ -9,6 +9,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +35,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -164,7 +167,7 @@ fun PremiumPosterCard(
                 val gradientColors = when (rankNum) {
                     "#1" -> listOf(Color(0xFFFFE082), Color(0xFFFFB300))
                     "#2" -> listOf(Color(0xFFF5F5F5), Color(0xFFB0BEC5))
-                    "#3" -> listOf(Color(0xFFFFCC80), Color(0xFFD2824A))
+                    "#3" -> listOf(Color(0xFFFFCC80), Color(0xFFFFD2824A))
                     else -> listOf(Color(0xFFFF8A3D), Color(0xFFF65605))
                 }
                 val textColor = if (rankNum == "#1" || rankNum == "#2" || rankNum == "#3") {
