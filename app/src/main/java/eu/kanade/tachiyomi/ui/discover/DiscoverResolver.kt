@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
 
 object DiscoverResolver {
     private val sourceManager: AnimeSourceManager = Injekt.get()
@@ -33,6 +34,54 @@ object DiscoverResolver {
     private val failedCache = ConcurrentHashMap<String, Long>()
     private val lastSuccessfulSourceId = java.util.concurrent.atomic.AtomicLong(-1L)
 
+    private fun generateQueries(title: String): List<String> {
+        val queries = mutableListOf<String>()
+        if (title.isBlank()) return queries
+
+        // (a) full title
+        queries.add(title)
+
+        // (b) part of the title before the first ":" or " - " when the title contains one
+        val colonIdx = title.indexOf(':')
+        val dashIdx = title.indexOf(" - ")
+        val splitIdx = when {
+            colonIdx != -1 && dashIdx != -1 -> minOf(colonIdx, dashIdx)
+            colonIdx != -1 -> colonIdx
+            dashIdx != -1 -> dashIdx
+            else -> -1
+        }
+        if (splitIdx != -1) {
+            val part = title.substring(0, splitIdx).trim()
+            if (part.isNotBlank() && part != title) {
+                queries.add(part)
+            }
+        }
+
+        // (c) title with trailing words removed and trailing digits
+        var cleaned = title
+        val trailingRegex = Regex("(?i)\\s+(?:season\\s*\\d+|\\d+(?:st|nd|rd|th)\\s+season|part\\s*\\d+|the\\s+final\\s+season|final\\s+season|cour\\s*\\d+|\\d+)$")
+        while (true) {
+            val match = trailingRegex.find(cleaned)
+            if (match != null) {
+                cleaned = cleaned.substring(0, match.range.first).trim()
+            } else {
+                break
+            }
+        }
+        if (cleaned.isNotBlank() && cleaned != title) {
+            queries.add(cleaned)
+        }
+
+        val validQueries = mutableListOf<String>()
+        for (q in queries) {
+            val trimmedQ = q.trim()
+            if (trimmedQ.length >= 3 && trimmedQ !in validQueries) {
+                validQueries.add(trimmedQ)
+            }
+        }
+        return validQueries.take(3)
+    }
+
     suspend fun resolveAnime(titles: List<String>): Long? = coroutineScope {
         if (titles.isEmpty()) return@coroutineScope null
         val query = titles.first()
@@ -41,7 +90,7 @@ object DiscoverResolver {
         cache[normalizedKey]?.let { return@coroutineScope it }
 
         val failedTimestamp = failedCache[normalizedKey]
-        if (failedTimestamp != null && System.currentTimeMillis() - failedTimestamp < 10 * 60 * 1000) {
+        if (failedTimestamp != null && System.currentTimeMillis() - failedTimestamp < 3 * 60 * 1000) {
             return@coroutineScope null
         }
 
@@ -51,63 +100,104 @@ object DiscoverResolver {
             .filter { it.lang in enabledLanguages && "${it.id}" !in disabledSources }
 
         if (sources.isEmpty()) {
-            failedCache[normalizedKey] = System.currentTimeMillis()
             return@coroutineScope null
         }
 
         val lastId = lastSuccessfulSourceId.get()
         val sortedSources = sources.sortedByDescending { if (it.id == lastId) 1 else 0 }
 
-        val result = withTimeoutOrNull(4000) {
-            coroutineScope {
-                val semaphore = Semaphore(8)
-                val resultDeferred = CompletableDeferred<Long?>()
-                val finishedCount = AtomicInteger(0)
-                val totalSources = sortedSources.size
+        val searchedCount = AtomicInteger(0)
+        val normalCount = AtomicInteger(0)
+        val hasErrorOrTimeout = AtomicBoolean(false)
+        val anySourceSearched = AtomicBoolean(false)
 
-                sortedSources.forEachIndexed { index, source ->
-                    async {
-                        if (resultDeferred.isCompleted) return@async
-                        if (index > 0) {
-                            delay(300)
-                        }
-                        if (resultDeferred.isCompleted) return@async
+        val result = try {
+            withTimeoutOrNull(9000) {
+                coroutineScope {
+                    val semaphore = Semaphore(8)
+                    val resultDeferred = CompletableDeferred<Long?>()
+                    val totalSources = sortedSources.size
+                    val finishedSourcesCount = AtomicInteger(0)
 
-                        semaphore.withPermit {
+                    sortedSources.forEachIndexed { index, source ->
+                        async {
                             if (resultDeferred.isCompleted) return@async
-                            try {
-                                val page = withTimeoutOrNull(3000) {
-                                    withContext(coroutineDispatcher) {
-                                        source.getSearchAnime(1, query, source.getFilterList())
-                                    }
-                                } ?: return@withPermit
+                            semaphore.withPermit {
+                                if (resultDeferred.isCompleted) return@async
+                                anySourceSearched.set(true)
+                                searchedCount.incrementAndGet()
 
-                                val candidateAnimes = page.animes.take(5)
-                                for (sAnime in candidateAnimes) {
-                                    val score = TitleMatcher.score(titles, sAnime.title)
-                                    if (score >= TitleMatcher.ACCEPT_THRESHOLD) {
-                                        val domainAnime = networkToLocalAnime.await(sAnime.toDomainAnime(source.id))
-                                        if (resultDeferred.complete(domainAnime.id)) {
-                                            cache[normalizedKey] = domainAnime.id
+                                var sourceNormal = true
+                                try {
+                                    val sourceResult = withTimeoutOrNull(6000) {
+                                        withContext(coroutineDispatcher) {
+                                            var foundId: Long? = null
+                                            for (q in generateQueries(query)) {
+                                                if (resultDeferred.isCompleted) break
+                                                try {
+                                                    val page = source.getSearchAnime(1, q, source.getFilterList())
+                                                    val candidateAnimes = page.animes.take(5)
+                                                    for (sAnime in candidateAnimes) {
+                                                        val score = TitleMatcher.score(titles, sAnime.title)
+                                                        if (score >= TitleMatcher.ACCEPT_THRESHOLD) {
+                                                            val domainAnime = networkToLocalAnime.await(sAnime.toDomainAnime(source.id))
+                                                            foundId = domainAnime.id
+                                                            break
+                                                        }
+                                                    }
+                                                } catch (_: Exception) {}
+                                                if (foundId != null) break
+                                            }
+                                            foundId
+                                        }
+                                    }
+                                    if (sourceResult == null) {
+                                        // Could be timeout or null result. If timeout of 6000ms triggered, withTimeoutOrNull returns null.
+                                        // Wait, did it timeout or return null results? To be robust against timeout, let's track if it exceeded or threw.
+                                        // Actually withTimeoutOrNull returns null on timeout. Let's consider timeout as non-normal.
+                                        sourceNormal = false
+                                        hasErrorOrTimeout.set(true)
+                                    } else {
+                                        val domainAnimeId = sourceResult
+                                        if (resultDeferred.complete(domainAnimeId)) {
+                                            cache[normalizedKey] = domainAnimeId
                                             lastSuccessfulSourceId.set(source.id)
                                         }
+                                        normalCount.incrementAndGet()
                                         return@withPermit
                                     }
+                                } catch (_: Exception) {
+                                    sourceNormal = false
+                                    hasErrorOrTimeout.set(true)
+                                } finally {
+                                    if (sourceNormal) {
+                                        normalCount.incrementAndGet()
+                                    }
+                                    if (finishedSourcesCount.incrementAndGet() == totalSources) {
+                                        if (!resultDeferred.isCompleted) {
+                                            resultDeferred.complete(null)
+                                        }
+                                    }
                                 }
-                            } catch (_: Exception) {}
-
-                            if (finishedCount.incrementAndGet() == totalSources) {
-                                resultDeferred.complete(null)
                             }
                         }
                     }
+                    resultDeferred.await()
                 }
-                resultDeferred.await()
             }
+        } catch (_: Exception) {
+            hasErrorOrTimeout.set(true)
+            null
         }
 
         if (result == null) {
-            failedCache[normalizedKey] = System.currentTimeMillis()
+            val searched = searchedCount.get()
+            val normals = normalCount.get()
+            val hadError = hasErrorOrTimeout.get()
+            // "only store a "not found" in the miss cache when EVERY searched source finished normally (no timeout, no exception) AND at least one source was searched. If any source timed out or failed, do NOT cache a miss."
+            if (anySourceSearched.get() && searched > 0 && normals == searched && !hadError) {
+                failedCache[normalizedKey] = System.currentTimeMillis()
+            }
         }
         result
     }
