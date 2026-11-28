@@ -55,6 +55,10 @@ fun PremiumPosterCard(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(targetValue = if (isPressed) 0.96f else 1.0f, label = "card_scale")
 
+    val titleParts = remember(title) { splitSeasonLabel(title) }
+    val cleanedTitle = titleParts.first
+    val seasonLabel = titleParts.second
+
     Column(
         modifier = modifier
             .width(140.dp)
@@ -89,32 +93,6 @@ fun PremiumPosterCard(
                         ),
                     ),
             )
-
-            val (cleanedTitle, seasonLabel) = remember(title) {
-                val patterns = listOf(
-                    Regex("""(?i)(?::\s*|\s+-\s+|\s+)(Season\s+\d+|[0-9]+(?:st|nd|rd|th)\s+Season|Part\s+\d+|Cour\s+\d+|The\s+Final\s+Season|Final\s+Season)(\s+(?:Season\s+\d+|[0-9]+(?:st|nd|rd|th)\s+Season|Part\s+\d+|Cour\s+\d+|The\s+Final\s+Season|Final\s+Season))*$""")
-                )
-                var bestClean = title.trim()
-                var foundLabel: String? = null
-                for (pattern in patterns) {
-                    val match = pattern.find(bestClean)
-                    if (match != null) {
-                        foundLabel = match.groupValues[1].trim()
-                        val remainder = bestClean.substring(0, match.range.first).trim()
-                        if (remainder.length >= 3) {
-                            bestClean = remainder
-                            break
-                        } else {
-                            foundLabel = null
-                        }
-                    }
-                }
-                if (bestClean.length < 3) {
-                    Pair(title.trim(), null)
-                } else {
-                    Pair(bestClean, foundLabel)
-                }
-            }
 
             // Title on poster
             Text(
@@ -242,5 +220,31 @@ fun PremiumPosterCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
+
+private fun splitSeasonLabel(title: String): Pair<String, String?> {
+    val patterns = listOf(
+        Regex("""(?i)(?::\s*|\s+-\s+|\s+)(Season\s+\d+|[0-9]+(?:st|nd|rd|th)\s+Season|Part\s+\d+|Cour\s+\d+|The\s+Final\s+Season|Final\s+Season)(\s+(?:Season\s+\d+|[0-9]+(?:st|nd|rd|th)\s+Season|Part\s+\d+|Cour\s+\d+|The\s+Final\s+Season|Final\s+Season))*$""")
+    )
+    var bestClean = title.trim()
+    var foundLabel: String? = null
+    for (pattern in patterns) {
+        val match = pattern.find(bestClean)
+        if (match != null) {
+            foundLabel = match.groupValues[1].trim()
+            val remainder = bestClean.substring(0, match.range.first).trim()
+            if (remainder.length >= 3) {
+                bestClean = remainder
+                break
+            } else {
+                foundLabel = null
+            }
+        }
+    }
+    return if (bestClean.length < 3) {
+        Pair(title.trim(), null)
+    } else {
+        Pair(bestClean, foundLabel)
     }
 }
