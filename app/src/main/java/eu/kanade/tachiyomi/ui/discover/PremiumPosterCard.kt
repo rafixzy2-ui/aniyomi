@@ -1,7 +1,6 @@
 package eu.kanade.tachiyomi.ui.discover
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -30,13 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -88,7 +84,7 @@ fun PremiumPosterCard(
                     .matchParentSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)),
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)),
                             startY = 150f,
                         ),
                     ),
@@ -98,12 +94,12 @@ fun PremiumPosterCard(
             Text(
                 text = title.uppercase(),
                 color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black,
-                lineHeight = 16.sp,
-                letterSpacing = 0.4.sp,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                lineHeight = 15.sp,
+                letterSpacing = 0.6.sp,
                 textAlign = TextAlign.Center,
-                maxLines = 3,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     shadow = Shadow(
@@ -118,10 +114,10 @@ fun PremiumPosterCard(
                     .fillMaxWidth(),
             )
 
-            // Rating circle
+            // Rating badge
             val scoreFloat = scoreText?.toFloatOrNull()
             if (scoreFloat != null) {
-                val ringColor = when {
+                val dotColor = when {
                     scoreFloat >= 8.0f -> Color(0xFF21D07A)
                     scoreFloat >= 6.5f -> Color(0xFFD2D531)
                     else -> Color(0xFFF65605)
@@ -130,79 +126,71 @@ fun PremiumPosterCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
-                        .size(36.dp)
-                        .background(Color.Black.copy(alpha = 0.7f), CircleShape),
+                        .height(22.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                        .border(0.5.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 7.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Canvas(modifier = Modifier.fillMaxSize().padding(3.dp)) {
-                        val strokeWidth = 3.dp.toPx()
-                        drawCircle(
-                            color = Color.White.copy(alpha = 0.2f),
-                            radius = (size.minDimension - strokeWidth) / 2f,
-                            style = Stroke(width = strokeWidth),
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(dotColor, CircleShape)
                         )
-                        drawArc(
-                            color = ringColor,
-                            startAngle = -90f,
-                            sweepAngle = (scoreFloat / 10f) * 360f,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                        Text(
+                            text = scoreText,
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
                         )
                     }
-                    Text(
-                        text = scoreText,
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
                 }
             }
 
-            // Rank pill
+            // Rank badge
             if (rankText != null) {
                 val parts = rankText.split(" ", limit = 2)
                 val rankNum = parts.getOrNull(0) ?: ""
                 val rankLabel = parts.getOrNull(1) ?: ""
 
-                val gradientColors = when (rankNum) {
-                    "#1" -> listOf(Color(0xFFFFE082), Color(0xFFFFB300))
-                    "#2" -> listOf(Color(0xFFF5F5F5), Color(0xFFB0BEC5))
-                    "#3" -> listOf(Color(0xFFFFCC80), Color(0xFFFFD2824A))
-                    else -> listOf(Color(0xFFFF8A3D), Color(0xFFF65605))
-                }
-                val textColor = if (rankNum == "#1" || rankNum == "#2" || rankNum == "#3") {
-                    Color.Black.copy(alpha = 0.85f)
-                } else {
-                    Color.White
+                val rankNumColor = when (rankNum) {
+                    "#1" -> Color(0xFFFFD54F)
+                    "#2" -> Color(0xFFE0E6EA)
+                    "#3" -> Color(0xFFE8A06A)
+                    else -> Color.White
                 }
 
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(8.dp)
-                        .background(
-                            brush = Brush.horizontalGradient(gradientColors),
-                            shape = RoundedCornerShape(10.dp),
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .height(22.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                        .border(0.5.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 7.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     Row(
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
                             text = rankNum,
-                            color = textColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Black,
+                            color = rankNumColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
                         )
                         if (rankLabel.isNotEmpty()) {
                             Text(
                                 text = rankLabel.uppercase(),
-                                color = textColor,
+                                color = Color.White.copy(alpha = 0.7f),
                                 fontSize = 8.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 1.sp,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.8.sp,
                             )
                         }
                     }
