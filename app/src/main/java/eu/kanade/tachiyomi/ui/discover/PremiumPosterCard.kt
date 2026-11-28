@@ -90,9 +90,35 @@ fun PremiumPosterCard(
                     ),
             )
 
+            val (cleanedTitle, seasonLabel) = remember(title) {
+                val patterns = listOf(
+                    Regex("""(?i)(?::\s*|\s+-\s+|\s+)(Season\s+\d+|[0-9]+(?:st|nd|rd|th)\s+Season|Part\s+\d+|Cour\s+\d+|The\s+Final\s+Season|Final\s+Season)(\s+(?:Season\s+\d+|[0-9]+(?:st|nd|rd|th)\s+Season|Part\s+\d+|Cour\s+\d+|The\s+Final\s+Season|Final\s+Season))*$""")
+                )
+                var bestClean = title.trim()
+                var foundLabel: String? = null
+                for (pattern in patterns) {
+                    val match = pattern.find(bestClean)
+                    if (match != null) {
+                        foundLabel = match.groupValues[1].trim()
+                        val remainder = bestClean.substring(0, match.range.first).trim()
+                        if (remainder.length >= 3) {
+                            bestClean = remainder
+                            break
+                        } else {
+                            foundLabel = null
+                        }
+                    }
+                }
+                if (bestClean.length < 3) {
+                    Pair(title.trim(), null)
+                } else {
+                    Pair(bestClean, foundLabel)
+                }
+            }
+
             // Title on poster
             Text(
-                text = title.uppercase(),
+                text = cleanedTitle.uppercase(),
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -127,8 +153,8 @@ fun PremiumPosterCard(
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
                         .height(22.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.58f), RoundedCornerShape(6.dp))
+                        .border(0.5.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(6.dp))
                         .padding(horizontal = 7.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -169,8 +195,8 @@ fun PremiumPosterCard(
                         .align(Alignment.TopStart)
                         .padding(8.dp)
                         .height(22.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
-                        .border(0.5.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.58f), RoundedCornerShape(6.dp))
+                        .border(0.5.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(6.dp))
                         .padding(horizontal = 7.dp),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -198,10 +224,18 @@ fun PremiumPosterCard(
             }
         }
 
-        if (subtitle != null) {
+        val displaySubtitle = remember(seasonLabel, subtitle) {
+            when {
+                seasonLabel != null && subtitle != null -> "$seasonLabel • $subtitle"
+                seasonLabel != null -> seasonLabel
+                else -> subtitle
+            }
+        }
+
+        if (displaySubtitle != null) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = subtitle,
+                text = displaySubtitle,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
                 fontSize = 11.sp,
                 maxLines = 1,
